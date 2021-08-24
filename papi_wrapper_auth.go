@@ -11,8 +11,8 @@ import (
 // This function only provides some basic user configuration options like home directory and primary group
 func (conn *OnefsConn) PapiCreateUser(name string, homedir string, pgroup string, zone string) (map[string]interface{}, error) {
 	body := OnefsUser{
-		PrimaryGroup: OnefsId{
-			Id: "GROUP:" + pgroup,
+		PrimaryGroup: OnefsID{
+			ID: "GROUP:" + pgroup,
 		},
 		Enabled:       true,
 		Name:          name,
@@ -98,7 +98,7 @@ func (conn *OnefsConn) PapiSetUserSuplementalGroups(name string, groups []string
 
 // PapiAddUserToGroup will add a suplementary groups to a user
 func (conn *OnefsConn) PapiAddUserToGroup(name string, group string, zone string) (map[string]interface{}, error) {
-	body := OnefsId{
+	body := OnefsID{
 		Name: name,
 		Type: "user",
 	}
