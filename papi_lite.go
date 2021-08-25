@@ -5,9 +5,8 @@
 // Additional higher level wrappers are also availble as convenience functions
 package papilite
 
-// TODO: Add support for automatic re-auth after session expires
-
 import (
+	"log"
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
@@ -24,6 +23,7 @@ import (
 
 const (
 	defaultConnTimeout int    = 120
+	defaultMaxReauthCount int = 1
 	sessionPath        string = "session/1/session"
 	maxCount           int    = 10000
 )
@@ -38,6 +38,7 @@ type PapiSession struct {
 	CsrfToken    string
 	Client       *http.Client
 	ConnTimeout  int
+	reauthCount  int
 }
 
 // sessionRequest defines the parameters required in an HTTP POST body to create a session
@@ -171,9 +172,9 @@ func (ctx *PapiSession) Connect() error {
 		return fmt.Errorf("[Connect] Client.Do error: %v", err)
 	}
 	defer resp.Body.Close()
+	respBody, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("[Connect] Unable to create a session: %s", fmt.Sprintf("%+v", string(body)))
+		return fmt.Errorf("[Connect] Unable to create a session: %s", fmt.Sprintf("%+v", string(respBody)))
 	}
 	sessionID := resp.Header["Set-Cookie"]
 	for i := 0; i < len(sessionID); i++ {
@@ -194,6 +195,7 @@ func (ctx *PapiSession) Connect() error {
 	if ctx.CsrfToken == "" {
 		return errors.New("[Connect] No CSRF token found in API connect call")
 	}
+	ctx.reauthCount = 0
 	return nil
 }
 
@@ -260,7 +262,7 @@ func (ctx *PapiSession) Send(method string, path interface{}, query map[string]s
 	// The count variable puts an upper limit on the number of times this function will automatically fetch additional data
 	for resume, count := true, 0; resume && count < maxCount; count++ {
 		if resumeKey != "" {
-			// When a resume key is used all old query parameters shoudl be discarded and only the resume key in the query arguments list
+			// When a resume key is used all old query parameters should be discarded and only the resume key in the query arguments list
 			query = map[string]string{"resume": resumeKey}
 		}
 		resp, err := ctx.SendRaw(method, path, query, body, headers)
@@ -273,7 +275,18 @@ func (ctx *PapiSession) Send(method string, path interface{}, query map[string]s
 			return nil, fmt.Errorf("[Send] Error reading response body: %v", err)
 		}
 		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			return nil, fmt.Errorf("[Send] Non 2xx response received: %s", fmt.Sprintf("%+v", string(rawBody)))
+			if resp.StatusCode == 401 {
+				// If a 401 error with a message of "Authorization required" is received, we should automatically re-authenticate to get a new session token and retry the request
+				if ctx.reauthCount >= defaultMaxReauthCount {
+					log.Printf("[ERROR][Send] Automatic re-authentication failed!")
+				} else {
+					ctx.reauthCount++
+					ctx.Reconnect()
+					// Recursively call Send with the same parameters and return the result. There is a limited number of re-auth attempts before failing the entire call
+					return ctx.Send(method, path, query, body, headers)
+				}
+      }
+			return nil, fmt.Errorf("[Send] Non 2xx response received (%d): %s", resp.StatusCode, fmt.Sprintf("%+v", string(rawBody)))
 		}
 
 		// If there is no body in the response, there is no need to try and process continuation requests
