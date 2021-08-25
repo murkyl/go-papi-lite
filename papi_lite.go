@@ -6,7 +6,6 @@
 package papilite
 
 import (
-	"log"
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
@@ -14,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	defaultConnTimeout int    = 120
-	defaultMaxReauthCount int = 1
-	sessionPath        string = "session/1/session"
-	maxCount           int    = 10000
+	defaultConnTimeout    int    = 120
+	defaultMaxReauthCount int    = 1
+	sessionPath           string = "session/1/session"
+	maxCount              int    = 10000
 )
 
 // PapiSession represents the state object for a connection
@@ -285,7 +285,7 @@ func (ctx *PapiSession) Send(method string, path interface{}, query map[string]s
 					// Recursively call Send with the same parameters and return the result. There is a limited number of re-auth attempts before failing the entire call
 					return ctx.Send(method, path, query, body, headers)
 				}
-      }
+			}
 			return nil, fmt.Errorf("[Send] Non 2xx response received (%d): %s", resp.StatusCode, fmt.Sprintf("%+v", string(rawBody)))
 		}
 
