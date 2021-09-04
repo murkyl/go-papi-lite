@@ -40,9 +40,9 @@ func TestSetup(t *testing.T) {
 // This may require the test to increase total timeout time as follows:
 // go test -timeout 1000s
 func TestSessionTimeout(t *testing.T) {
-  if os.Getenv("TESTTIMEOUT") == "" {
-    t.Skipf("Set environment variable TESTTIMEOUT to 1 to run the timeout test\nTestSessionTimeout requires the test to actually run for 905 seconds. The default session inactive timeout is 900 seconds. This may require the test to increase total timeout time as follows:\n    go test -timeout 1000s")
-  }
+	if os.Getenv("TESTTIMEOUT") == "" {
+		t.Skipf("Set environment variable TESTTIMEOUT to 1 to run the timeout test\nTestSessionTimeout requires the test to actually run for 905 seconds. The default session inactive timeout is 900 seconds. This may require the test to increase total timeout time as follows:\n    go test -timeout 1000s")
+	}
 	conn := NewSession("")
 	conn.SetEndpoint(TestEndpoint)
 	conn.SetUser(TestUser)
