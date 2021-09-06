@@ -7,9 +7,9 @@ import (
 	"log"
 )
 
-// PapiCreateUser creates a new user in a given access zone
+// CreateUser creates a new user in a given access zone
 // This function only provides some basic user configuration options like home directory and primary group
-func (conn *OnefsConn) PapiCreateUser(name string, homedir string, pgroup string, zone string) (map[string]interface{}, error) {
+func (conn *OnefsConn) CreateUser(name string, homedir string, pgroup string, zone string) (map[string]interface{}, error) {
 	body := OnefsUser{
 		PrimaryGroup: OnefsID{
 			ID: "GROUP:" + pgroup,
@@ -35,8 +35,8 @@ func (conn *OnefsConn) PapiCreateUser(name string, homedir string, pgroup string
 	return jsonBody, err
 }
 
-// PapiGetUserList returns a list of OnefsUsers in a given access zone
-func (conn *OnefsConn) PapiGetUserList(zone string) ([]OnefsUser, error) {
+// GetUserList returns a list of OnefsUsers in a given access zone
+func (conn *OnefsConn) GetUserList(zone string) ([]OnefsUser, error) {
 	jsonObj, err := conn.Papi.Send(
 		"GET",
 		conn.PlatformPath+"/auth/users",
@@ -47,7 +47,7 @@ func (conn *OnefsConn) PapiGetUserList(zone string) ([]OnefsUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	//log.Print(fmt.Sprintf("[papiGetUserList] JSON: %s", debug_json(jsonObj)))
+	//log.Print(fmt.Sprintf("[GetUserList] JSON: %s", debug_json(jsonObj)))
 	var result struct{ Users []OnefsUser }
 	err = mapstructure.Decode(jsonObj, &result)
 	if err != nil {
@@ -56,8 +56,8 @@ func (conn *OnefsConn) PapiGetUserList(zone string) ([]OnefsUser, error) {
 	return result.Users, err
 }
 
-// PapiGetUser returns the OnefsUser structure for a specific user
-func (conn *OnefsConn) PapiGetUser(name string, zone string) (*OnefsUser, error) {
+// GetUser returns the OnefsUser structure for a specific user
+func (conn *OnefsConn) GetUser(name string, zone string) (*OnefsUser, error) {
 	jsonObj, err := conn.Papi.Send(
 		"GET",
 		conn.PlatformPath+"/auth/users/"+name,
@@ -68,36 +68,36 @@ func (conn *OnefsConn) PapiGetUser(name string, zone string) (*OnefsUser, error)
 	if err != nil {
 		return nil, err
 	}
-	//log.Print(fmt.Sprintf("[papiGetUser] JSON: %s", debug_json(jsonObj)))
+	//log.Print(fmt.Sprintf("[GetUser] JSON: %s", debug_json(jsonObj)))
 	var result struct{ Users []OnefsUser }
 	err = mapstructure.Decode(jsonObj, &result)
 	if err != nil {
 		return nil, err
 	}
 	if len(result.Users) < 1 {
-		return nil, fmt.Errorf("[papiGetUser] User list was empty. Expected at least 1 user")
+		return nil, fmt.Errorf("[GetUser] User list was empty. Expected at least 1 user")
 	}
 	return &result.Users[0], err
 }
 
-// PapiSetUserSuplementalGroups adds a list of groups to a user. This is done by repeated calls to PapiAddUserToGroup
-func (conn *OnefsConn) PapiSetUserSuplementalGroups(name string, groups []string, zone string) error {
+// SetUserSuplementalGroups adds a list of groups to a user. This is done by repeated calls to AddUserToGroup
+func (conn *OnefsConn) SetUserSuplementalGroups(name string, groups []string, zone string) error {
 	errorCount := 0
 	for i := 0; i < len(groups); i++ {
-		_, err := conn.PapiAddUserToGroup(name, groups[i], zone)
+		_, err := conn.AddUserToGroup(name, groups[i], zone)
 		if err != nil {
 			log.Print(fmt.Sprintf("Unable to add user %s to group %s in access zone %s", name, groups[i], zone))
 			errorCount++
 		}
 	}
 	if errorCount > 0 {
-		return fmt.Errorf("[papiSetUserSuplementalGroups] %d error(s) encountered adding user to groups: %s", errorCount, groups)
+		return fmt.Errorf("[SetUserSuplementalGroups] %d error(s) encountered adding user to groups: %s", errorCount, groups)
 	}
 	return nil
 }
 
-// PapiAddUserToGroup will add a suplementary groups to a user
-func (conn *OnefsConn) PapiAddUserToGroup(name string, group string, zone string) (map[string]interface{}, error) {
+// AddUserToGroup will add a supplementary groups to a user
+func (conn *OnefsConn) AddUserToGroup(name string, group string, zone string) (map[string]interface{}, error) {
 	body := OnefsID{
 		Name: name,
 		Type: "user",
@@ -106,11 +106,11 @@ func (conn *OnefsConn) PapiAddUserToGroup(name string, group string, zone string
 	if err != nil {
 		return nil, err
 	}
-	//log.Print(fmt.Sprintf("[papiAddUserToGroup] Body of request: %s", bodyJSON))
+	//log.Print(fmt.Sprintf("[AddUserToGroup] Body of request: %s", bodyJSON))
 	jsonObj, err := conn.Papi.Send(
 		"POST",
 		conn.PlatformPath+"/auth/groups/"+group+"/members",
-		nil,      // query
+		map[string]string{"zone": zone},
 		bodyJSON, // body
 		nil,      // extra headers
 	)
@@ -119,7 +119,7 @@ func (conn *OnefsConn) PapiAddUserToGroup(name string, group string, zone string
 		var apiErr struct{ Errors []OnefsError }
 		apiDecodeErr := mapstructure.Decode(err, &apiErr)
 		if apiDecodeErr != nil {
-			log.Print(fmt.Sprintf("[papiAddUserToGroup] Request error: %s", err))
+			log.Print(fmt.Sprintf("[AddUserToGroup] Request error: %s", err))
 			return nil, err
 		}
 		duplicate := false
@@ -132,12 +132,12 @@ func (conn *OnefsConn) PapiAddUserToGroup(name string, group string, zone string
 			return nil, err
 		}
 	}
-	//log.Print(fmt.Sprintf("[papiAddUserToGroup] Response JSON: %s", debug_json(jsonObj)))
+	//log.Print(fmt.Sprintf("[AddUserToGroup] Response JSON: %s", debug_json(jsonObj)))
 	return jsonObj, err
 }
 
-// PapiDeleteUser will delete a user
-func (conn *OnefsConn) PapiDeleteUser(name string, zone string) (map[string]interface{}, error) {
+// DeleteUser will delete a user
+func (conn *OnefsConn) DeleteUser(name string, zone string) (map[string]interface{}, error) {
 	jsonObj, err := conn.Papi.Send(
 		"DELETE",
 		conn.PlatformPath+"/auth/users/"+name,
@@ -145,9 +145,9 @@ func (conn *OnefsConn) PapiDeleteUser(name string, zone string) (map[string]inte
 		nil, // body
 		nil, // extra headers
 	)
-	//log.Print(fmt.Sprintf("[papiDeleteUser] JSON: %s", debug_json(jsonObj)))
+	//log.Print(fmt.Sprintf("[DeleteUser] JSON: %s", debug_json(jsonObj)))
 	if err != nil {
-		log.Print(fmt.Sprintf("[papiDeleteUser] Error: %s", err))
+		log.Print(fmt.Sprintf("[DeleteUser] Error: %s", err))
 		return nil, err
 	}
 	return jsonObj, err

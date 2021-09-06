@@ -88,29 +88,27 @@ type OnefsAccessZone struct {
 // NewPapiConn returns a connection state object that is used by all other calls in this library
 func NewPapiConn() *OnefsConn {
 	return &OnefsConn{
+		Papi:         NewSession(""),
 		PlatformPath: defaultPapiWrapperPlatformPath,
 		RanPath:      defaultPapiWrapperRanPath,
 		ServicePath:  defaultPapiWrapperServicePath,
 	}
 }
 
-// PapiConnect performs the actual connection to the OneFS clsuter endpoint given the endpoint configuration in a OnefsCfg struct
-func (conn *OnefsConn) PapiConnect(cfg *OnefsCfg) error {
-	conn.PapiDisconnect()
-	if conn.Papi == nil {
-		conn.Papi = NewSession("")
-	}
+// Connect performs the actual connection to the OneFS clsuter endpoint given the endpoint configuration in a OnefsCfg struct
+func (conn *OnefsConn) Connect(cfg *OnefsCfg) error {
+	conn.Papi.Disconnect()
 	conn.Papi.SetEndpoint(cfg.Endpoint)
 	conn.Papi.SetUser(cfg.User)
 	conn.Papi.SetPassword(cfg.Password)
 	conn.Papi.SetIgnoreCert(cfg.BypassCert)
 	err := conn.Papi.Connect()
 	if err != nil {
-		log.Print(fmt.Sprintf("[papiConnect] Unable to connect to API endpoint: %s\n", err))
+		log.Print(fmt.Sprintf("[Connect] Unable to connect to API endpoint: %s\n", err))
 		return err
 	}
-	log.Print(fmt.Sprintf("[papiConnect] Connected to PAPI with session ID: %s", conn.Papi.SessionToken))
-	apiVer, err := conn.PapiGetPlatformLatest()
+	log.Print(fmt.Sprintf("[Connect] Connected to PAPI with session ID: %s", conn.Papi.SessionToken))
+	apiVer, err := conn.GetPlatformLatest()
 	if err != nil {
 		log.Print("Unable to get latest platform API version automatically")
 	} else {
@@ -119,8 +117,8 @@ func (conn *OnefsConn) PapiConnect(cfg *OnefsCfg) error {
 	return nil
 }
 
-// PapiDisconnect disconnects the connection to the endpoint. This is safe to call multiple times and even if a connect was never performed
-func (conn *OnefsConn) PapiDisconnect() error {
+// Disconnect disconnects the connection to the endpoint. This is safe to call multiple times and even if a connect was never performed
+func (conn *OnefsConn) Disconnect() error {
 	if conn.Papi != nil {
 		err := conn.Papi.Disconnect()
 		if err != nil {
@@ -130,8 +128,8 @@ func (conn *OnefsConn) PapiDisconnect() error {
 	return nil
 }
 
-// PapiGetPlatformLatest returns the current API version in string format of the connected OneFS cluster
-func (conn *OnefsConn) PapiGetPlatformLatest() (string, error) {
+// GetPlatformLatest returns the current API version in string format of the connected OneFS cluster
+func (conn *OnefsConn) GetPlatformLatest() (string, error) {
 	jsonObj, err := conn.Papi.Send(
 		"GET",
 		defaultPapiWrapperLatestPath,
@@ -145,8 +143,8 @@ func (conn *OnefsConn) PapiGetPlatformLatest() (string, error) {
 	return jsonObj["latest"].(string), nil
 }
 
-// PapiGetAccessZoneList returns a list of all the access zones on a cluster
-func (conn *OnefsConn) PapiGetAccessZoneList() ([]OnefsAccessZone, error) {
+// GetAccessZoneList returns a list of all the access zones on a cluster
+func (conn *OnefsConn) GetAccessZoneList() ([]OnefsAccessZone, error) {
 	jsonObj, err := conn.Papi.Send(
 		"GET",
 		conn.PlatformPath+"/zones",
@@ -157,7 +155,7 @@ func (conn *OnefsConn) PapiGetAccessZoneList() ([]OnefsAccessZone, error) {
 	if err != nil {
 		return nil, err
 	}
-	//conn.Logger().Debug(fmt.Sprintf("[papiGetAccessZoneList] JSON: %s", debug_json(jsonObj)))
+	//conn.Logger().Debug(fmt.Sprintf("[GetAccessZoneList] JSON: %s", debug_json(jsonObj)))
 	var result struct{ Zones []OnefsAccessZone }
 	err = mapstructure.Decode(jsonObj, &result)
 	if err != nil {
@@ -166,12 +164,12 @@ func (conn *OnefsConn) PapiGetAccessZoneList() ([]OnefsAccessZone, error) {
 	return result.Zones, err
 }
 
-// PapiGetS3Token creates a new S3 access secret. Returns a structure containing the current and former access keys and secrets.
+// GetS3Token creates a new S3 access secret. Returns a structure containing the current and former access keys and secrets.
 // The call will always force a new key to be generated which will cause the old key to be invalidated after TTL minutes or immediately if no TTL is specified
 // name: User name
 // zone: Access zone for the request. Defaults to "System" if the string is empty
 // ttl: Time in minutes to expire the old key. Defaults to no expiration if ttl is set to 0
-func (conn *OnefsConn) PapiGetS3Token(name string, zone string, ttl int) (*OnefsS3Key, error) {
+func (conn *OnefsConn) GetS3Token(name string, zone string, ttl int) (*OnefsS3Key, error) {
 	var bodyJSON []byte
 	var err error
 	if ttl > 0 {
@@ -188,7 +186,7 @@ func (conn *OnefsConn) PapiGetS3Token(name string, zone string, ttl int) (*Onefs
 	if zone == "" {
 		zone = "System"
 	}
-	//conn.Logger().Debug(fmt.Sprintf("[papiGetS3Token] S3 token body request: %s", bodyJSON))
+	//conn.Logger().Debug(fmt.Sprintf("[GetS3Token] S3 token body request: %s", bodyJSON))
 	jsonObj, err := conn.Papi.Send(
 		"POST",
 		conn.PlatformPath+"/protocols/s3/keys/"+name,
@@ -199,7 +197,7 @@ func (conn *OnefsConn) PapiGetS3Token(name string, zone string, ttl int) (*Onefs
 	if err != nil {
 		return nil, err
 	}
-	//conn.Logger().Debug(fmt.Sprintf("[papiGetS3Token] JSON: %s", debug_json(jsonObj)))
+	//conn.Logger().Debug(fmt.Sprintf("[GetS3Token] JSON: %s", debug_json(jsonObj)))
 	var result struct{ Keys OnefsS3Key }
 	err = mapstructure.Decode(jsonObj, &result)
 	if err != nil {
