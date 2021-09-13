@@ -107,7 +107,7 @@ func (conn *OnefsConn) Connect(cfg *OnefsCfg) error {
 		log.Print(fmt.Sprintf("[Connect] Unable to connect to API endpoint: %s\n", err))
 		return err
 	}
-	log.Print(fmt.Sprintf("[Connect] Connected to PAPI with session ID: %s", conn.Papi.SessionToken))
+	//log.Print(fmt.Sprintf("[Connect] Connected to PAPI with session ID: %s", conn.Papi.SessionToken))
 	apiVer, err := conn.GetPlatformLatest()
 	if err != nil {
 		log.Print("Unable to get latest platform API version automatically")
