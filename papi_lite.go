@@ -201,7 +201,7 @@ func (ctx *PapiSession) init() error {
 }
 
 // Connect is called to initiate a connection to the endpoint. Connect can be called multiple times as
-// the fucntion will automatically disconnect any existing connection. Changes to the endpoint can be
+// the function will automatically disconnect any existing connection. Changes to the endpoint can be
 // made to the context and another Connect made to switch to the other endpoint.
 func (ctx *PapiSession) Connect() error {
 	var match []string
@@ -401,7 +401,7 @@ func (ctx *PapiSession) Send(method string, path interface{}, query map[string]s
 // The function takes the request, PapiSession, and a map containing possible header key/value pairs
 // The function first overwrites any existing headers in the request with those supplied in the headers parameter
 // Only after this is done do we attempt to add in the session, CSRF and Referer headers. If these headers exist
-// in the passed in headers array, they are not overriden. The values in the passed in headers map take precedence
+// in the passed in headers array, they are not overridden. The values in the passed in headers map take precedence
 func setHeaders(req *http.Request, ctx *PapiSession, headers map[string]string) {
 	for k, v := range headers {
 		// Manually set headers as we want to preserve the case sensitivity of each header
