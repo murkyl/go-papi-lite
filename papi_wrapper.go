@@ -93,7 +93,7 @@ func NewPapiConn() *OnefsConn {
 	}
 }
 
-// Connect performs the actual connection to the OneFS clsuter endpoint given the endpoint configuration in a OnefsCfg struct
+// Connect performs the actual connection to the OneFS cluster endpoint given the endpoint configuration in a OnefsCfg struct
 func (conn *OnefsConn) Connect(cfg *OnefsCfg) error {
 	conn.Papi.Disconnect()
 	conn.Papi.SetEndpoint(cfg.Endpoint)
