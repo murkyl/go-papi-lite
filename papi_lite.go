@@ -143,7 +143,10 @@ func (ctx *PapiSession) SetPassword(s string) string {
 // and reconnect to use the new endpoint
 func (ctx *PapiSession) SetEndpoint(s string) string {
 	old := ctx.Endpoint
-	ctx.Endpoint = s
+	_, err := url.Parse(s)
+	if err == nil {
+		ctx.Endpoint = s
+	}
 	return old
 }
 
@@ -166,7 +169,10 @@ func (ctx *PapiSession) SetConnTimeout(t int) int {
 // path can be a string or a slice/array of strings
 // query is map of strings in a basic key, value pair
 func (ctx *PapiSession) GetURL(path interface{}, query map[string]string) string {
-	x, _ := url.Parse(ctx.Endpoint)
+	x, err := url.Parse(ctx.Endpoint)
+	if err != nil {
+		return ""
+	}
 	switch path.(type) {
 	case []string:
 		x.Path += strings.Join(path.([]string), "/")
